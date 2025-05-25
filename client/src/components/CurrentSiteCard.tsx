@@ -20,12 +20,47 @@ const CurrentSiteCard: React.FC<CurrentSiteCardProps> = ({ credentials }) => {
   
   const handleAutofill = () => {
     // Implementation would use browser extension APIs to autofill
+    alert(`Autofilling credentials for ${credentials.website}\nUsername: ${credentials.username}\nPassword: ${credentials.password}`);
     console.log('Autofilling credentials for', credentials.website);
   };
   
   const handleEdit = () => {
-    // Implementation would open edit form
-    console.log('Editing credentials for', credentials.website);
+    // Get updated values
+    const newUsername = prompt("Update username:", credentials.username);
+    if (newUsername === null) return; // User canceled
+    
+    const newPassword = prompt("Update password:", credentials.password);
+    if (newPassword === null) return; // User canceled
+    
+    // Prepare data for saving
+    const passwordData = {
+      userId: 1, // In a real extension, we'd get this from the authenticated user
+      website: credentials.website,
+      username: newUsername,
+      password: newPassword
+    };
+    
+    // Call the API to update
+    fetch(`/api/passwords/${credentials.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(passwordData)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to update credentials');
+      return res.json();
+    })
+    .then(() => {
+      alert(`Credentials updated successfully for ${credentials.website}`);
+      // Refresh the page to show updated credentials
+      window.location.reload();
+    })
+    .catch(err => {
+      console.error('Error updating credentials:', err);
+      alert('Failed to update credentials. Please try again.');
+    });
   };
 
   return (

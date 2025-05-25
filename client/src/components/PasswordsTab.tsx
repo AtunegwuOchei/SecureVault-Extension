@@ -51,7 +51,17 @@ const PasswordsTab: React.FC<PasswordsTabProps> = ({ visible, currentSite }) => 
         ) : (
           <div className="bg-white rounded-lg shadow p-4 text-center">
             <p className="text-neutral-600 mb-3">No credentials found for this site</p>
-            <button className="px-3 py-1.5 bg-primary text-white text-sm rounded-md inline-flex items-center">
+            <button 
+              className="px-3 py-1.5 bg-primary text-white text-sm rounded-md inline-flex items-center"
+              onClick={() => {
+                if (window.confirm(`Would you like to add a new password for ${currentSite}?`)) {
+                  // Pass the current site to generator tab
+                  localStorage.setItem('currentSiteForGenerator', currentSite);
+                  // Switch to generator tab
+                  window.dispatchEvent(new CustomEvent('switchTab', { detail: 'generator' }));
+                }
+              }}
+            >
               <span className="material-icons text-sm mr-1">add</span>
               Add Password
             </button>

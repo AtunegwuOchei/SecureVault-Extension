@@ -44,6 +44,9 @@ const GeneratorTab: React.FC<GeneratorTabProps> = ({ visible }) => {
   
   useEffect(() => {
     if (visible) {
+      // Check if there's a current site for adding password
+      const currentSiteForGenerator = localStorage.getItem('currentSiteForGenerator');
+      
       handleGeneratePassword();
       handleGeneratePassphrase();
     }
@@ -100,13 +103,87 @@ const GeneratorTab: React.FC<GeneratorTabProps> = ({ visible }) => {
   };
   
   const handleSavePasswordForSite = () => {
-    // Logic to save the password for the current site
-    console.log('Saving password:', generatedPassword);
+    // Get the current site from localStorage (set by the Passwords tab)
+    const currentSite = localStorage.getItem('currentSiteForGenerator');
+    
+    if (!currentSite) {
+      alert("Please specify a website to save this password for.");
+      return;
+    }
+    
+    // Prepare data for saving
+    const passwordData = {
+      userId: 1, // In a real extension, we'd get this from the authenticated user
+      website: currentSite,
+      username: prompt("Enter the username for this site:", `user@${currentSite}`) || `user@${currentSite}`,
+      password: generatedPassword
+    };
+    
+    // Call the API to save
+    fetch('/api/passwords', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(passwordData)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to save password');
+      return res.json();
+    })
+    .then(() => {
+      alert(`Password saved successfully for ${currentSite}`);
+      // Clear the currentSite from localStorage
+      localStorage.removeItem('currentSiteForGenerator');
+      // Switch back to passwords tab
+      window.dispatchEvent(new CustomEvent('switchTab', { detail: 'passwords' }));
+    })
+    .catch(err => {
+      console.error('Error saving password:', err);
+      alert('Failed to save password. Please try again.');
+    });
   };
   
   const handleSavePassphraseForSite = () => {
-    // Logic to save the passphrase for the current site
-    console.log('Saving passphrase:', generatedPassphrase);
+    // Get the current site from localStorage (set by the Passwords tab)
+    const currentSite = localStorage.getItem('currentSiteForGenerator');
+    
+    if (!currentSite) {
+      alert("Please specify a website to save this passphrase for.");
+      return;
+    }
+    
+    // Prepare data for saving
+    const passwordData = {
+      userId: 1, // In a real extension, we'd get this from the authenticated user
+      website: currentSite,
+      username: prompt("Enter the username for this site:", `user@${currentSite}`) || `user@${currentSite}`,
+      password: generatedPassphrase
+    };
+    
+    // Call the API to save
+    fetch('/api/passwords', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(passwordData)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to save passphrase');
+      return res.json();
+    })
+    .then(() => {
+      alert(`Passphrase saved successfully for ${currentSite}`);
+      // Clear the currentSite from localStorage
+      localStorage.removeItem('currentSiteForGenerator');
+      // Switch back to passwords tab
+      window.dispatchEvent(new CustomEvent('switchTab', { detail: 'passwords' }));
+    })
+    .catch(err => {
+      console.error('Error saving passphrase:', err);
+      alert('Failed to save passphrase. Please try again.');
+    });
   };
 
   if (!visible) return null;

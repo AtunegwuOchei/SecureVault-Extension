@@ -29,6 +29,19 @@ const ExtensionPopup: React.FC = () => {
     };
 
     detectCurrentSite();
+    
+    // Listen for tab switch events
+    const handleSwitchTab = (event: CustomEvent) => {
+      if (event.detail && ['passwords', 'generator', 'settings'].includes(event.detail)) {
+        setActiveTab(event.detail as 'passwords' | 'generator' | 'settings');
+      }
+    };
+    
+    window.addEventListener('switchTab', handleSwitchTab as EventListener);
+    
+    return () => {
+      window.removeEventListener('switchTab', handleSwitchTab as EventListener);
+    };
   }, [getCurrentTab]);
 
   const handleAutofillAccept = () => {
@@ -42,6 +55,15 @@ const ExtensionPopup: React.FC = () => {
   };
 
   const handleAddNewPassword = () => {
+    // Prompt for website if not on a specific site
+    if (!currentSite) {
+      const website = prompt("Enter the website URL for this password:", "");
+      if (website) {
+        localStorage.setItem('currentSiteForGenerator', website);
+      }
+    } else {
+      localStorage.setItem('currentSiteForGenerator', currentSite);
+    }
     setActiveTab('generator');
   };
 
