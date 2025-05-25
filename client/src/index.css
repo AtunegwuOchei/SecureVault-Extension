@@ -78,7 +78,28 @@
   }
 
   body {
-    @apply font-sans antialiased bg-neutral-100 text-foreground w-[380px] min-h-[500px] max-h-[600px] overflow-y-auto;
+    @apply font-sans antialiased bg-neutral-100 text-foreground overflow-y-auto;
+    width: 100%;
+    min-width: 300px;
+    max-width: 100%;
+    min-height: 500px;
+    height: 100vh;
+    max-height: 100vh;
+  }
+  
+  /* Responsive sizing based on the environment */
+  @media (min-width: 768px) {
+    body {
+      width: 380px;
+      max-height: 600px;
+      height: 600px;
+    }
+  }
+  
+  /* Extra small text for mobile */
+  .text-2xs {
+    font-size: 0.65rem;
+    line-height: 1rem;
   }
 }
 

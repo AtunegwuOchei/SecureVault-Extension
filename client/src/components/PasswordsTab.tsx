@@ -78,7 +78,10 @@ const PasswordsTab: React.FC<PasswordsTabProps> = ({ visible, currentSite }) => 
         
         {isLoading ? (
           <div className="bg-white rounded-lg shadow p-3 mb-3 text-center">
-            <p className="text-neutral-600">Loading...</p>
+            <div className="flex justify-center items-center py-2">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p className="text-neutral-600 text-sm">Loading passwords...</p>
           </div>
         ) : recentPasswords && recentPasswords.length > 0 ? (
           recentPasswords.map((password) => (

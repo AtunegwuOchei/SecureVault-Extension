@@ -70,19 +70,19 @@ const ExtensionPopup: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-neutral-100">
       {/* Header Section */}
-      <header className="bg-primary p-4 text-white flex items-center justify-between shadow-md">
+      <header className="bg-primary p-3 md:p-4 text-white flex items-center justify-between shadow-md">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center pulse">
-            <span className="material-icons text-primary text-sm">lock</span>
+          <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center pulse">
+            <span className="material-icons text-primary text-xs md:text-sm">lock</span>
           </div>
-          <h1 className="text-lg font-medium">SecureKeeper</h1>
+          <h1 className="text-base md:text-lg font-medium">SecureKeeper</h1>
         </div>
         <div className="flex items-center space-x-2">
           <button className="p-1 rounded-full hover:bg-primary-light transition-colors" title="Settings" onClick={() => setActiveTab('settings')}>
-            <span className="material-icons text-sm">settings</span>
+            <span className="material-icons text-xs md:text-sm">settings</span>
           </button>
           <button className="p-1 rounded-full hover:bg-primary-light transition-colors" title="User Account">
-            <span className="material-icons text-sm">account_circle</span>
+            <span className="material-icons text-xs md:text-sm">account_circle</span>
           </button>
         </div>
       </header>
@@ -91,25 +91,25 @@ const ExtensionPopup: React.FC = () => {
       <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
       
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto p-3 md:p-4">
         <PasswordsTab visible={activeTab === 'passwords'} currentSite={currentSite} />
         <GeneratorTab visible={activeTab === 'generator'} />
         <SettingsTab visible={activeTab === 'settings'} />
       </main>
       
       {/* Bottom Action Bar */}
-      <div className="bg-white p-3 border-t border-neutral-200 flex items-center justify-between">
+      <div className="bg-white p-2 md:p-3 border-t border-neutral-200 flex items-center justify-between">
         <div className="flex items-center">
           <div className={`w-2 h-2 ${isConnected ? 'bg-secondary' : 'bg-red-500'} rounded-full pulse mr-2`}></div>
-          <span className="text-xs text-neutral-600">
+          <span className="text-2xs md:text-xs text-neutral-600">
             {isConnected ? 'Connected to SecureKeeper App' : 'Not connected to SecureKeeper App'}
           </span>
         </div>
         <button 
-          className="px-3 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs rounded-md flex items-center transition-colors"
+          className="px-2 md:px-3 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-2xs md:text-xs rounded-md flex items-center transition-colors"
           onClick={handleAddNewPassword}
         >
-          <span className="material-icons text-xs mr-1">add</span>
+          <span className="material-icons text-2xs md:text-xs mr-1">add</span>
           New
         </button>
       </div>
