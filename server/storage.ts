@@ -3,10 +3,10 @@ import {
   passwords, type Password, type InsertPassword,
   settings, type Settings, type InsertSettings
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
-// modify the interface with any CRUD methods
-// you might need
-
+// Interface for storage operations
 export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
@@ -26,172 +26,109 @@ export interface IStorage {
   updateSettings(settings: InsertSettings): Promise<Settings>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private passwords: Map<number, Password>;
-  private settingsMap: Map<number, Settings>;
-  private userIdCounter: number;
-  private passwordIdCounter: number;
-  private settingsIdCounter: number;
-
-  constructor() {
-    this.users = new Map();
-    this.passwords = new Map();
-    this.settingsMap = new Map();
-    this.userIdCounter = 1;
-    this.passwordIdCounter = 1;
-    this.settingsIdCounter = 1;
-    
-    // Add some demo data
-    this.initializeDemoData();
-  }
-  
-  private initializeDemoData() {
-    // Create a demo user
-    const demoUser: User = {
-      id: this.userIdCounter++,
-      username: "demo",
-      password: "password",
-      email: "demo@example.com",
-    };
-    this.users.set(demoUser.id, demoUser);
-    
-    // Create some demo passwords
-    const websites = ["example.com", "gmail.com", "amazon.com", "netflix.com"];
-    websites.forEach(website => {
-      const password: Password = {
-        id: this.passwordIdCounter++,
-        userId: demoUser.id,
-        website,
-        username: website === "amazon.com" ? "johndoe22" : "john.doe@email.com",
-        password: `Secure${website.charAt(0).toUpperCase()}@ssw0rd`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      this.passwords.set(password.id, password);
-    });
-    
-    // Create demo settings
-    const demoSettings: Settings = {
-      id: this.settingsIdCounter++,
-      userId: demoUser.id,
-      extensionSettings: {
-        autoFillOnPageLoad: true,
-        autoLockTimeout: "15",
-        biometricAuth: true,
-        passwordSuggestions: true,
-        defaultPasswordLength: "16",
-      },
-      syncSettings: {
-        syncWithNativeApp: true,
-        syncFrequency: "realtime",
-        lastSynced: new Date().toISOString(),
-      },
-      updatedAt: new Date(),
-    };
-    this.settingsMap.set(demoSettings.id, demoSettings);
-  }
-
+// Database implementation of storage
+export class DatabaseStorage implements IStorage {
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
   
   // Password methods
   async getPassword(id: number): Promise<Password | undefined> {
-    return this.passwords.get(id);
+    const [password] = await db.select().from(passwords).where(eq(passwords.id, id));
+    return password;
   }
   
   async getPasswordByWebsite(website: string): Promise<Password | undefined> {
-    return Array.from(this.passwords.values()).find(
-      (password) => password.website === website,
-    );
+    const [password] = await db.select().from(passwords).where(eq(passwords.website, website));
+    return password;
   }
   
   async getRecentPasswords(): Promise<Password[]> {
-    return Array.from(this.passwords.values())
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-      .slice(0, 5);
+    const recentPasswords = await db
+      .select()
+      .from(passwords)
+      .orderBy(passwords.updatedAt)
+      .limit(5);
+    return recentPasswords.reverse(); // Show newest first
   }
   
   async createPassword(insertPassword: InsertPassword): Promise<Password> {
-    const id = this.passwordIdCounter++;
-    const now = new Date();
-    const password: Password = { 
-      ...insertPassword, 
-      id,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.passwords.set(id, password);
+    const [password] = await db
+      .insert(passwords)
+      .values(insertPassword)
+      .returning();
     return password;
   }
   
   async updatePassword(id: number, insertPassword: InsertPassword): Promise<Password> {
-    const existingPassword = this.passwords.get(id);
-    if (!existingPassword) {
+    const [updatedPassword] = await db
+      .update(passwords)
+      .set({
+        ...insertPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(passwords.id, id))
+      .returning();
+    
+    if (!updatedPassword) {
       throw new Error(`Password with id ${id} not found`);
     }
     
-    const updatedPassword: Password = {
-      ...existingPassword,
-      ...insertPassword,
-      updatedAt: new Date(),
-    };
-    
-    this.passwords.set(id, updatedPassword);
     return updatedPassword;
   }
   
   async deletePassword(id: number): Promise<void> {
-    this.passwords.delete(id);
+    await db.delete(passwords).where(eq(passwords.id, id));
   }
   
   // Settings methods
   async getSettings(): Promise<Settings | undefined> {
-    // For demo purposes, just return the first settings
-    return Array.from(this.settingsMap.values())[0];
+    const [settingsData] = await db.select().from(settings).limit(1);
+    return settingsData;
   }
   
   async updateSettings(insertSettings: InsertSettings): Promise<Settings> {
-    let settings = Array.from(this.settingsMap.values()).find(
-      (s) => s.userId === insertSettings.userId,
-    );
+    // Check if settings exist for this user
+    const [existingSettings] = await db
+      .select()
+      .from(settings)
+      .where(eq(settings.userId, insertSettings.userId));
     
-    if (settings) {
+    if (existingSettings) {
       // Update existing settings
-      const updatedSettings: Settings = {
-        ...settings,
-        ...insertSettings,
-        updatedAt: new Date(),
-      };
-      this.settingsMap.set(settings.id, updatedSettings);
+      const [updatedSettings] = await db
+        .update(settings)
+        .set({
+          ...insertSettings,
+          updatedAt: new Date()
+        })
+        .where(eq(settings.id, existingSettings.id))
+        .returning();
       return updatedSettings;
     } else {
       // Create new settings
-      const id = this.settingsIdCounter++;
-      settings = { 
-        ...insertSettings, 
-        id,
-        updatedAt: new Date(),
-      };
-      this.settingsMap.set(id, settings);
-      return settings;
+      const [newSettings] = await db
+        .insert(settings)
+        .values(insertSettings)
+        .returning();
+      return newSettings;
     }
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
