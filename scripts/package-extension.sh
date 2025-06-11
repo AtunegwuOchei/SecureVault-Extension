@@ -11,9 +11,9 @@ mkdir -p "$PACKAGES_DIR"
 package_extension() {
   local BROWSER=$1
   local SOURCE_DIR="$DIST_DIR/$BROWSER"
-  local PACKAGE_FILE="$PACKAGES_DIR/securekeeper-$BROWSER.zip"
+  local PACKAGE_FILE="$PACKAGES_DIR/securevault-$BROWSER.zip"
   
-  echo "Packaging SecureKeeper for $BROWSER..."
+  echo "Packaging SecureVault for $BROWSER..."
   
   # Check if source directory exists
   if [ ! -d "$SOURCE_DIR" ]; then

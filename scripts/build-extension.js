@@ -74,7 +74,7 @@ browsers.forEach(browser => {
       // Add Mozilla specific keys
       manifest.browser_specific_settings = {
         gecko: {
-          id: "securekeeper@example.com",
+          id: "securevault@example.com",
           strict_min_version: "57.0"
         }
       };

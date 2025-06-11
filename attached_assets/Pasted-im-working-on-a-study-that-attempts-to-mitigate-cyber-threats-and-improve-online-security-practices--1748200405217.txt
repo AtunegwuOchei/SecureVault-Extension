@@ -101,7 +101,7 @@ Plan
 Finished about 2 hours ago
 
 App icon
-SecureKeeper
+SecureVault
 Tech stack
 App type
 Integrations

@@ -1,4 +1,4 @@
-// SecureKeeper Extension Content Script
+// SecureVault Extension Content Script
 
 // Identify login forms on the page
 function findLoginForms() {
@@ -117,7 +117,7 @@ function setupPasswordChangeDetection() {
 // Show autofill notification to user
 function showAutofillNotification(credentials) {
   const notificationDiv = document.createElement('div');
-  notificationDiv.className = 'securekeeper-notification';
+  notificationDiv.className = 'securevault-notification';
   notificationDiv.innerHTML = `
     <div style="position: fixed; top: 10px; right: 10px; background: white; border: 1px solid #ccc; 
                 border-radius: 5px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999; 
@@ -127,7 +127,7 @@ function showAutofillNotification(credentials) {
                     display: flex; align-items: center; justify-content: center; margin-right: 10px;">
           <span style="color: white; font-weight: bold; font-size: 14px;">S</span>
         </div>
-        <div style="font-weight: bold;">SecureKeeper</div>
+        <div style="font-weight: bold;">SecureVault</div>
       </div>
       <p style="margin: 5px 0; font-size: 14px;">Would you like to autofill credentials for this site?</p>
       <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
@@ -186,7 +186,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Initialize
 (function() {
-  console.log('SecureKeeper content script loaded');
+  console.log('SecureVault content script loaded');
   setupPasswordChangeDetection();
   
   // Check for login forms on page load

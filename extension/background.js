@@ -1,10 +1,10 @@
-// SecureKeeper Extension Background Script
+// SecureVault Extension Background Script
 
 // Listen for installation or update events
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     // First time installation
-    console.log('SecureKeeper Extension installed');
+    console.log('SecureVault Extension installed');
     
     // Set default settings
     chrome.storage.local.set({
@@ -18,7 +18,7 @@ chrome.runtime.onInstalled.addListener((details) => {
       'lastSync': new Date().toISOString()
     });
   } else if (details.reason === 'update') {
-    console.log('SecureKeeper Extension updated');
+    console.log('SecureVault Extension updated');
   }
 });
 

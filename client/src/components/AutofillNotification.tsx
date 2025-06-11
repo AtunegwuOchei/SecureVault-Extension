@@ -14,7 +14,7 @@ const AutofillNotification: React.FC<AutofillNotificationProps> = ({ site, onAcc
           <div className="w-6 h-6 rounded-full bg-primary-light flex items-center justify-center mr-2">
             <span className="material-icons text-primary text-sm">lock</span>
           </div>
-          <h3 className="text-sm font-medium text-neutral-800">SecureKeeper</h3>
+          <h3 className="text-sm font-medium text-neutral-800">SecureVault</h3>
         </div>
         <button className="p-1 rounded-full hover:bg-neutral-100" onClick={onDecline}>
           <span className="material-icons text-neutral-500 text-sm">close</span>

@@ -1,6 +1,6 @@
-# SecureKeeper Extension Deployment Guide
+# SecureVault Extension Deployment Guide
 
-This guide will walk you through the process of packaging and deploying your SecureKeeper browser extension to various browsers and platforms.
+This guide will walk you through the process of packaging and deploying your SecureVault browser extension to various browsers and platforms.
 
 ## Prerequisites
 
@@ -32,9 +32,9 @@ This will create distribution packages in the `packages` directory.
 1. Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 2. Sign in with your Google account
 3. Click "New Item" to upload a new extension
-4. Upload the `securekeeper-chrome.zip` file from your packages directory
+4. Upload the `securevault-chrome.zip` file from your packages directory
 5. Fill in the required metadata:
-   - Extension name: "SecureKeeper"
+   - Extension name: "SecureVault"
    - Description
    - Category: "Productivity"
    - Screenshots (at least 1280x800 resolution)
@@ -47,9 +47,9 @@ This will create distribution packages in the `packages` directory.
 1. Go to the [Firefox Add-ons Developer Hub](https://addons.mozilla.org/developers/)
 2. Sign in or create a Firefox account
 3. Click "Submit a New Add-on"
-4. Upload the `securekeeper-firefox.zip` file
+4. Upload the `securevault-firefox.zip` file
 5. Fill in the required information:
-   - Name: "SecureKeeper"
+   - Name: "SecureVault"
    - Summary and description
    - Choose categories and add-on type
    - Upload screenshots (1280x800 or 1200x900)
@@ -61,9 +61,9 @@ This will create distribution packages in the `packages` directory.
 2. Sign in with your Microsoft account
 3. Navigate to "Microsoft Edge Add-ons"
 4. Click "Create new extension"
-5. Upload the `securekeeper-edge.zip` file
+5. Upload the `securevault-edge.zip` file
 6. Complete the product details:
-   - Name: "SecureKeeper"
+   - Name: "SecureVault"
    - Short description and detailed description
    - Categories and Privacy policy URL
    - Screenshots (at least 1280x800)
@@ -74,9 +74,9 @@ This will create distribution packages in the `packages` directory.
 1. Go to the [Opera Add-ons Developer Dashboard](https://addons.opera.com/developer/)
 2. Sign in with your Opera account
 3. Click "Upload Add-on"
-4. Upload the `securekeeper-opera.zip` file
+4. Upload the `securevault-opera.zip` file
 5. Fill in the product details:
-   - Title: "SecureKeeper"
+   - Title: "SecureVault"
    - Summary and description
    - Categories
    - Screenshots (at least 1280x800)

@@ -75,7 +75,7 @@ const ExtensionPopup: React.FC = () => {
           <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center pulse">
             <span className="material-icons text-primary text-xs md:text-sm">lock</span>
           </div>
-          <h1 className="text-base md:text-lg font-medium">SecureKeeper</h1>
+          <h1 className="text-base md:text-lg font-medium">SecureVault</h1>
         </div>
         <div className="flex items-center space-x-2">
           <button className="p-1 rounded-full hover:bg-primary-light transition-colors" title="Settings" onClick={() => setActiveTab('settings')}>
@@ -102,7 +102,7 @@ const ExtensionPopup: React.FC = () => {
         <div className="flex items-center">
           <div className={`w-2 h-2 ${isConnected ? 'bg-secondary' : 'bg-red-500'} rounded-full pulse mr-2`}></div>
           <span className="text-2xs md:text-xs text-neutral-600">
-            {isConnected ? 'Connected to SecureKeeper App' : 'Not connected to SecureKeeper App'}
+            {isConnected ? 'Connected to SecureVault App' : 'Not connected to SecureVault App'}
           </span>
         </div>
         <button 

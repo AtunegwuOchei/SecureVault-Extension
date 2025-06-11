@@ -204,7 +204,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ visible }) => {
           <div className="flex items-center justify-between">
             <div>
               <label className="text-sm font-medium text-neutral-700">Sync with Native App</label>
-              <p className="text-xs text-neutral-500">Keep extension in sync with SecureKeeper app</p>
+              <p className="text-xs text-neutral-500">Keep extension in sync with SecureVault app</p>
             </div>
             <label className="inline-flex items-center cursor-pointer">
               <input 
@@ -250,8 +250,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ visible }) => {
       <div className="bg-white rounded-lg shadow p-4">
         <h2 className="text-base font-medium text-neutral-800 mb-4">About</h2>
         <div className="text-sm text-neutral-600">
-          <p className="mb-2">SecureKeeper Extension v1.0.2</p>
-          <p className="mb-2">© 2023 SecureKeeper</p>
+          <p className="mb-2">SecureVault Extension v1.0.2</p>
+          <p className="mb-2">© 2023 SecureVault</p>
           <div className="flex space-x-4 mt-3">
             <a href="#" className="text-primary hover:underline">Privacy Policy</a>
             <a href="#" className="text-primary hover:underline">Terms of Service</a>

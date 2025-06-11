@@ -46,7 +46,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
         <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-neutral-800">Welcome to SecureKeeper</h2>
+          <h2 className="text-lg font-medium text-neutral-800">Welcome to SecureVault</h2>
           <button className="p-1 rounded-full hover:bg-neutral-100" onClick={onClose}>
             <span className="material-icons">close</span>
           </button>
@@ -58,7 +58,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ onClose }) => {
               <span className="material-icons text-primary text-3xl">lock</span>
             </div>
             <h3 className="text-lg font-medium text-neutral-800">Let's set up your extension</h3>
-            <p className="text-sm text-neutral-600 mt-1">Connect to your SecureKeeper account to get started</p>
+            <p className="text-sm text-neutral-600 mt-1">Connect to your SecureVault account to get started</p>
           </div>
           
           {error && (
@@ -78,7 +78,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ onClose }) => {
               ) : (
                 <span className="material-icons text-sm mr-2">smartphone</span>
               )}
-              Connect to SecureKeeper App
+              Connect to SecureVault App
             </button>
             
             <div className="relative flex items-center">
