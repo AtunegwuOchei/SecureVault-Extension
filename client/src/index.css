@@ -13,34 +13,28 @@
   --card-foreground: 20 14.3% 4.1%;
   --border: 20 5.9% 90%;
   --input: 20 5.9% 90%;
-  --primary: 227 76% 48%; /* #3F51B5 */
-  --primary-light: 230 48% 69%; /* #757de8 */
-  --primary-dark: 230 44% 26%; /* #002984 */
+  --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
-  --secondary: 122 39% 49%; /* #4CAF50 */
-  --secondary-light: 120 37% 70%; /* #80e27e */
-  --secondary-dark: 124 61% 27%; /* #087f23 */
+  --secondary: 60 4.8% 95.9%;
   --secondary-foreground: 24 9.8% 10%;
-  --accent: 14 100% 57%; /* #FF5722 */
-  --accent-light: 23 100% 65%; /* #ff8a50 */
-  --accent-dark: 15 100% 38%; /* #c41c00 */
+  --accent: 60 4.8% 95.9%;
   --accent-foreground: 24 9.8% 10%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 60 9.1% 97.8%;
   --ring: 20 14.3% 4.1%;
   --radius: 0.5rem;
-  
+
   /* Neutral colors */
-  --neutral-100: 210 40% 98%; /* #F5F7FA */
-  --neutral-200: 210 38% 91%; /* #E4E7EB */
-  --neutral-300: 214 32% 83%; /* #CBD2D9 */
-  --neutral-400: 211 25% 65%; /* #9AA5B1 */
-  --neutral-500: 214 20% 53%; /* #7B8794 */
-  --neutral-600: 216 15% 43%; /* #616E7C */
-  --neutral-700: 218 17% 35%; /* #52606D */
-  --neutral-800: 218 23% 27%; /* #3E4C59 */
-  --neutral-900: 220 26% 22%; /* #323F4B */
-  --neutral-950: 224 30% 16%; /* #1F2933 */
+  --neutral-100: 210 40% 98%;
+  --neutral-200: 210 38% 91%;
+  --neutral-300: 214 32% 83%;
+  --neutral-400: 211 25% 65%;
+  --neutral-500: 214 20% 53%;
+  --neutral-600: 216 15% 43%;
+  --neutral-700: 218 17% 35%;
+  --neutral-800: 218 23% 27%;
+  --neutral-900: 220 26% 22%;
+  --neutral-950: 224 30% 16%;
 }
 
 .dark {
@@ -54,17 +48,11 @@
   --card-foreground: 0 0% 98%;
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --primary: 227 76% 48%;
-  --primary-light: 230 48% 69%;
-  --primary-dark: 230 44% 26%;
+  --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
-  --secondary: 122 39% 49%;
-  --secondary-light: 120 37% 70%;
-  --secondary-dark: 124 61% 27%;
+  --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
-  --accent: 14 100% 57%;
-  --accent-light: 23 100% 65%;
-  --accent-dark: 15 100% 38%;
+  --accent: 240 3.7% 15.9%;
   --accent-foreground: 0 0% 98%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
@@ -86,8 +74,7 @@
     height: 100vh;
     max-height: 100vh;
   }
-  
-  /* Responsive sizing based on the environment */
+
   @media (min-width: 768px) {
     body {
       width: 380px;
@@ -95,15 +82,13 @@
       height: 600px;
     }
   }
-  
-  /* Extra small text for mobile */
+
   .text-2xs {
     font-size: 0.65rem;
     line-height: 1rem;
   }
 }
 
-/* Animation for security pulse */
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
   70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
@@ -114,7 +99,6 @@
   animation: pulse 2s infinite;
 }
 
-/* Tooltip styling */
 .tooltip {
   position: relative;
 }
