@@ -24,7 +24,7 @@ export const storage = {
       const result = await db
         .select()
         .from(passwords)
-        .orderBy(passwords.updatedAt)
+        .orderBy(passwords.createdAt)
         .limit(10);
       
       return result;
