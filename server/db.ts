@@ -1,44 +1,26 @@
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import ws from "ws";
+import * as schema from "@shared/schema";
 
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import { passwords, settings } from '@shared/schema';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import path from 'path';
+neonConfig.webSocketConstructor = ws;
 
-const sqlite = new Database('database.sqlite');
+// Prevent multiple pool/db instances during development (hot reloads)
+const globalForDrizzle = globalThis as unknown as {
+  pool?: Pool;
+  db?: ReturnType<typeof drizzle>;
+};
 
-export const db = drizzle(sqlite);
+export const pool =
+  globalForDrizzle.pool ??
+  new Pool({
+    connectionString:
+      "postgresql://neondb_owner:npg_rJ0c6vnBQHIV@ep-patient-hat-abrzz4ri-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require",
+  });
 
-// Create tables if they don't exist
-try {
-  // Create passwords table
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS passwords (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      website TEXT NOT NULL,
-      username TEXT NOT NULL,
-      password TEXT NOT NULL,
-      createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
-    )
-  `);
+export const db = globalForDrizzle.db ?? drizzle({ client: pool, schema });
 
-  // Create settings table
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      autoFillOnPageLoad INTEGER DEFAULT 1,
-      autoLockTimeout TEXT DEFAULT '5',
-      biometricAuth INTEGER DEFAULT 0,
-      passwordSuggestions INTEGER DEFAULT 1,
-      defaultPasswordLength TEXT DEFAULT '12',
-      syncWithNativeApp INTEGER DEFAULT 1,
-      syncFrequency TEXT DEFAULT 'daily',
-      lastSynced TEXT
-    )
-  `);
-
-  console.log('Database tables initialized successfully');
-} catch (error) {
-  console.error('Error initializing database:', error);
+if (process.env.NODE_ENV !== "production") {
+  globalForDrizzle.pool = pool;
+  globalForDrizzle.db = db;
 }
