@@ -1,134 +1,165 @@
-import { 
-  users, type User, type InsertUser,
-  passwords, type Password, type InsertPassword,
-  settings, type Settings, type InsertSettings
-} from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
 
-// Interface for storage operations
-export interface IStorage {
-  // User methods
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
-  // Password methods
-  getPassword(id: number): Promise<Password | undefined>;
-  getPasswordByWebsite(website: string): Promise<Password | undefined>;
-  getRecentPasswords(): Promise<Password[]>;
-  createPassword(password: InsertPassword): Promise<Password>;
-  updatePassword(id: number, password: InsertPassword): Promise<Password>;
-  deletePassword(id: number): Promise<void>;
-  
-  // Settings methods
-  getSettings(): Promise<Settings | undefined>;
-  updateSettings(settings: InsertSettings): Promise<Settings>;
-}
+import { db } from './db';
+import { passwords, settings } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
-// Database implementation of storage
-export class DatabaseStorage implements IStorage {
-  // User methods
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
-  }
-  
-  // Password methods
-  async getPassword(id: number): Promise<Password | undefined> {
-    const [password] = await db.select().from(passwords).where(eq(passwords.id, id));
-    return password;
-  }
-  
-  async getPasswordByWebsite(website: string): Promise<Password | undefined> {
-    const [password] = await db.select().from(passwords).where(eq(passwords.website, website));
-    return password;
-  }
-  
-  async getRecentPasswords(): Promise<Password[]> {
-    const recentPasswords = await db
-      .select()
-      .from(passwords)
-      .orderBy(passwords.updatedAt)
-      .limit(5);
-    return recentPasswords.reverse(); // Show newest first
-  }
-  
-  async createPassword(insertPassword: InsertPassword): Promise<Password> {
-    const [password] = await db
-      .insert(passwords)
-      .values(insertPassword)
-      .returning();
-    return password;
-  }
-  
-  async updatePassword(id: number, insertPassword: InsertPassword): Promise<Password> {
-    const [updatedPassword] = await db
-      .update(passwords)
-      .set({
-        ...insertPassword,
-        updatedAt: new Date()
-      })
-      .where(eq(passwords.id, id))
-      .returning();
-    
-    if (!updatedPassword) {
-      throw new Error(`Password with id ${id} not found`);
+export const storage = {
+  async getPasswordByWebsite(website: string) {
+    try {
+      const result = await db
+        .select()
+        .from(passwords)
+        .where(eq(passwords.website, website))
+        .limit(1);
+      
+      return result[0] || null;
+    } catch (error) {
+      console.error('Error getting password by website:', error);
+      return null;
     }
-    
-    return updatedPassword;
-  }
-  
-  async deletePassword(id: number): Promise<void> {
-    await db.delete(passwords).where(eq(passwords.id, id));
-  }
-  
-  // Settings methods
-  async getSettings(): Promise<Settings | undefined> {
-    const [settingsData] = await db.select().from(settings).limit(1);
-    return settingsData;
-  }
-  
-  async updateSettings(insertSettings: InsertSettings): Promise<Settings> {
-    // Check if settings exist for this user
-    const [existingSettings] = await db
-      .select()
-      .from(settings)
-      .where(eq(settings.userId, insertSettings.userId));
-    
-    if (existingSettings) {
-      // Update existing settings
-      const [updatedSettings] = await db
-        .update(settings)
-        .set({
-          ...insertSettings,
-          updatedAt: new Date()
+  },
+
+  async getRecentPasswords() {
+    try {
+      const result = await db
+        .select()
+        .from(passwords)
+        .orderBy(passwords.updatedAt)
+        .limit(10);
+      
+      return result;
+    } catch (error) {
+      console.error('Error getting recent passwords:', error);
+      // Return empty array instead of throwing
+      return [];
+    }
+  },
+
+  async createPassword(data: typeof passwords.$inferInsert) {
+    try {
+      const result = await db
+        .insert(passwords)
+        .values({
+          ...data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         })
-        .where(eq(settings.id, existingSettings.id))
         .returning();
-      return updatedSettings;
-    } else {
-      // Create new settings
-      const [newSettings] = await db
-        .insert(settings)
-        .values(insertSettings)
-        .returning();
-      return newSettings;
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error creating password:', error);
+      throw new Error('Failed to create password');
     }
-  }
-}
+  },
 
-export const storage = new DatabaseStorage();
+  async updatePassword(id: number, data: Partial<typeof passwords.$inferInsert>) {
+    try {
+      const result = await db
+        .update(passwords)
+        .set({
+          ...data,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(passwords.id, id))
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error updating password:', error);
+      throw new Error('Failed to update password');
+    }
+  },
+
+  async deletePassword(id: number) {
+    try {
+      await db
+        .delete(passwords)
+        .where(eq(passwords.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting password:', error);
+      throw new Error('Failed to delete password');
+    }
+  },
+
+  async getSettings() {
+    try {
+      const result = await db
+        .select()
+        .from(settings)
+        .limit(1);
+      
+      // Return default settings if none exist
+      if (result.length === 0) {
+        const defaultSettings = {
+          autoFillOnPageLoad: true,
+          autoLockTimeout: '5',
+          biometricAuth: false,
+          passwordSuggestions: true,
+          defaultPasswordLength: '12',
+          syncWithNativeApp: true,
+          syncFrequency: 'daily',
+          lastSynced: new Date().toISOString(),
+        };
+        
+        // Create default settings
+        const created = await db
+          .insert(settings)
+          .values(defaultSettings)
+          .returning();
+        
+        return created[0];
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error getting settings:', error);
+      // Return default settings on error
+      return {
+        id: 1,
+        autoFillOnPageLoad: true,
+        autoLockTimeout: '5',
+        biometricAuth: false,
+        passwordSuggestions: true,
+        defaultPasswordLength: '12',
+        syncWithNativeApp: true,
+        syncFrequency: 'daily',
+        lastSynced: new Date().toISOString(),
+      };
+    }
+  },
+
+  async updateSettings(data: typeof settings.$inferInsert) {
+    try {
+      // First check if settings exist
+      const existing = await db
+        .select()
+        .from(settings)
+        .limit(1);
+      
+      if (existing.length === 0) {
+        // Create new settings
+        const result = await db
+          .insert(settings)
+          .values(data)
+          .returning();
+        
+        return result[0];
+      } else {
+        // Update existing settings
+        const result = await db
+          .update(settings)
+          .set(data)
+          .where(eq(settings.id, existing[0].id))
+          .returning();
+        
+        return result[0];
+      }
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      throw new Error('Failed to update settings');
+    }
+  },
+};

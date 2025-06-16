@@ -1,3 +1,4 @@
+
 // SecureVault Extension Content Script
 
 // Identify login forms on the page
@@ -7,35 +8,57 @@ function findLoginForms() {
 
   forms.forEach(form => {
     // Check if the form has password fields
-    const passwordFields = form.querySelectorAll('input[type="password"]');
+    const passwordFields = form.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])');
     if (passwordFields.length > 0) {
       // Find username/email field (usually comes before password field)
       let usernameField = null;
-      const inputFields = form.querySelectorAll('input[type="text"], input[type="email"]');
+      const inputFields = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input:not([type])');
       
       for (const field of inputFields) {
-        const fieldId = field.id.toLowerCase();
-        const fieldName = field.name.toLowerCase();
-        const fieldClass = field.className.toLowerCase();
+        if (field.disabled || field.readOnly) continue;
+        
+        const fieldId = (field.id || '').toLowerCase();
+        const fieldName = (field.name || '').toLowerCase();
+        const fieldClass = (field.className || '').toLowerCase();
+        const placeholder = (field.placeholder || '').toLowerCase();
+        const label = getLabelForField(field);
         
         // Look for common username/email field identifiers
-        if (fieldId.includes('user') || fieldId.includes('email') || 
-            fieldName.includes('user') || fieldName.includes('email') ||
-            fieldClass.includes('user') || fieldClass.includes('email')) {
+        const identifiers = [
+          'user', 'email', 'login', 'account', 'username', 'mail',
+          'signin', 'phone', 'mobile', 'tel'
+        ];
+        
+        const hasIdentifier = identifiers.some(identifier => 
+          fieldId.includes(identifier) || 
+          fieldName.includes(identifier) ||
+          fieldClass.includes(identifier) ||
+          placeholder.includes(identifier) ||
+          label.includes(identifier)
+        );
+        
+        if (hasIdentifier) {
           usernameField = field;
           break;
         }
       }
       
-      // If no username field found, take the input field that comes before password
-      if (!usernameField && passwordFields[0].previousElementSibling) {
-        const prevField = passwordFields[0].previousElementSibling;
-        if (prevField.tagName === 'INPUT') {
-          usernameField = prevField;
+      // If no username field found, take the first visible input field that comes before password
+      if (!usernameField) {
+        const allInputs = Array.from(form.querySelectorAll('input[type="text"], input[type="email"], input:not([type])'));
+        const passwordPosition = Array.from(form.querySelectorAll('*')).indexOf(passwordFields[0]);
+        
+        for (const field of allInputs) {
+          if (field.disabled || field.readOnly) continue;
+          const fieldPosition = Array.from(form.querySelectorAll('*')).indexOf(field);
+          if (fieldPosition < passwordPosition && isVisible(field)) {
+            usernameField = field;
+            break;
+          }
         }
       }
       
-      if (usernameField) {
+      if (usernameField && isVisible(usernameField) && isVisible(passwordFields[0])) {
         loginForms.push({
           form: form,
           usernameField: usernameField,
@@ -48,22 +71,73 @@ function findLoginForms() {
   return loginForms;
 }
 
-// Fill credentials into login form
+// Helper function to get label text for a field
+function getLabelForField(field) {
+  let label = '';
+  
+  // Check for label element
+  if (field.id) {
+    const labelElement = document.querySelector(`label[for="${field.id}"]`);
+    if (labelElement) {
+      label = labelElement.textContent || '';
+    }
+  }
+  
+  // Check for parent label
+  const parentLabel = field.closest('label');
+  if (parentLabel) {
+    label = parentLabel.textContent || '';
+  }
+  
+  // Check for preceding text
+  if (!label && field.previousElementSibling) {
+    label = field.previousElementSibling.textContent || '';
+  }
+  
+  return label.toLowerCase();
+}
+
+// Helper function to check if element is visible
+function isVisible(element) {
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && 
+         style.visibility !== 'hidden' && 
+         style.opacity !== '0' &&
+         element.offsetWidth > 0 && 
+         element.offsetHeight > 0;
+}
+
+// Fill credentials into login form with better event simulation
 function fillCredentials(credentials) {
   const loginForms = findLoginForms();
   
   if (loginForms.length > 0) {
     const { usernameField, passwordField } = loginForms[0];
     
-    // Fill in the username field
+    // Focus and fill username field
+    usernameField.focus();
     usernameField.value = credentials.username;
-    usernameField.dispatchEvent(new Event('input', { bubbles: true }));
-    usernameField.dispatchEvent(new Event('change', { bubbles: true }));
     
-    // Fill in the password field
-    passwordField.value = credentials.password;
-    passwordField.dispatchEvent(new Event('input', { bubbles: true }));
-    passwordField.dispatchEvent(new Event('change', { bubbles: true }));
+    // Trigger events for better compatibility
+    const events = ['input', 'change', 'blur'];
+    events.forEach(eventType => {
+      usernameField.dispatchEvent(new Event(eventType, { bubbles: true }));
+    });
+    
+    // Small delay before filling password
+    setTimeout(() => {
+      passwordField.focus();
+      passwordField.value = credentials.password;
+      
+      events.forEach(eventType => {
+        passwordField.dispatchEvent(new Event(eventType, { bubbles: true }));
+      });
+      
+      // Focus back to username for better UX
+      setTimeout(() => {
+        usernameField.focus();
+      }, 100);
+    }, 100);
     
     return true;
   }
@@ -73,68 +147,98 @@ function fillCredentials(credentials) {
 
 // Listen for password changes to offer saving
 function setupPasswordChangeDetection() {
-  const forms = document.querySelectorAll('form');
+  let formSubmissionData = {};
   
-  forms.forEach(form => {
-    form.addEventListener('submit', (event) => {
-      const passwordFields = form.querySelectorAll('input[type="password"]');
+  // Monitor form submissions
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (form.tagName !== 'FORM') return;
+    
+    const passwordFields = form.querySelectorAll('input[type="password"]');
+    
+    if (passwordFields.length > 0) {
+      let newPassword = '';
+      let username = '';
       
-      if (passwordFields.length > 0) {
-        // Check if this might be a password change or new account
-        let newPassword = '';
-        let username = '';
-        
-        // Find the password and username values
-        if (passwordFields.length >= 1) {
-          newPassword = passwordFields[0].value;
-          
-          // Try to find username field
-          const usernameField = form.querySelector('input[type="text"], input[type="email"]');
-          if (usernameField) {
-            username = usernameField.value;
-          }
-        }
-        
-        if (newPassword && username) {
-          // Get the current website
-          const website = window.location.origin;
-          
-          // Send message to background script to offer saving
-          chrome.runtime.sendMessage({
-            action: 'offerSavePassword',
-            data: {
-              website,
-              username,
-              password: newPassword
-            }
-          });
+      // Get password value
+      for (const passwordField of passwordFields) {
+        if (passwordField.value && passwordField.value.length > 0) {
+          newPassword = passwordField.value;
+          break;
         }
       }
-    });
-  });
+      
+      // Find username field
+      const usernameField = form.querySelector('input[type="text"], input[type="email"], input:not([type])');
+      if (usernameField && usernameField.value) {
+        username = usernameField.value;
+      }
+      
+      if (newPassword && username) {
+        const website = window.location.hostname;
+        
+        // Store for potential saving
+        formSubmissionData = {
+          website,
+          username,
+          password: newPassword
+        };
+        
+        // Delay to allow form submission to complete
+        setTimeout(() => {
+          // Check if we're still on the same page (form didn't redirect)
+          if (window.location.hostname === website) {
+            chrome.runtime.sendMessage({
+              action: 'savePassword',
+              data: formSubmissionData
+            });
+          }
+        }, 1000);
+      }
+    }
+  }, true);
 }
 
 // Show autofill notification to user
 function showAutofillNotification(credentials) {
+  // Remove any existing notifications
+  const existingNotification = document.querySelector('.securevault-notification');
+  if (existingNotification) {
+    existingNotification.remove();
+  }
+  
   const notificationDiv = document.createElement('div');
   notificationDiv.className = 'securevault-notification';
   notificationDiv.innerHTML = `
-    <div style="position: fixed; top: 10px; right: 10px; background: white; border: 1px solid #ccc; 
-                border-radius: 5px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999; 
-                width: 280px; font-family: Arial, sans-serif;">
-      <div style="display: flex; align-items: center; margin-bottom: 10px;">
-        <div style="width: 20px; height: 20px; background: #3F51B5; border-radius: 50%; 
-                    display: flex; align-items: center; justify-content: center; margin-right: 10px;">
-          <span style="color: white; font-weight: bold; font-size: 14px;">S</span>
+    <div style="position: fixed; top: 20px; right: 20px; background: white; border: 2px solid #3F51B5; 
+                border-radius: 8px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 999999; 
+                width: 320px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                animation: slideIn 0.3s ease-out;">
+      <style>
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      </style>
+      <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <div style="width: 24px; height: 24px; background: #3F51B5; border-radius: 50%; 
+                    display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+          <span style="color: white; font-weight: bold; font-size: 14px;">🔐</span>
         </div>
-        <div style="font-weight: bold;">SecureVault</div>
+        <div style="font-weight: 600; color: #333; font-size: 16px;">SecureVault</div>
       </div>
-      <p style="margin: 5px 0; font-size: 14px;">Would you like to autofill credentials for this site?</p>
-      <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-        <button id="sk-autofill-no" style="background: #f1f1f1; border: none; padding: 5px 10px; 
-                 border-radius: 3px; margin-right: 5px; cursor: pointer;">No</button>
-        <button id="sk-autofill-yes" style="background: #3F51B5; color: white; border: none; 
-                 padding: 5px 10px; border-radius: 3px; cursor: pointer;">Yes</button>
+      <p style="margin: 8px 0; font-size: 14px; color: #666; line-height: 1.4;">
+        Autofill login credentials for <strong>${credentials.username}</strong>?
+      </p>
+      <div style="display: flex; justify-content: flex-end; margin-top: 16px; gap: 8px;">
+        <button id="sv-autofill-no" style="background: #f5f5f5; border: 1px solid #ddd; padding: 8px 16px; 
+                 border-radius: 4px; cursor: pointer; font-size: 14px; color: #666;">
+          Not now
+        </button>
+        <button id="sv-autofill-yes" style="background: #3F51B5; color: white; border: none; 
+                 padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+          Autofill
+        </button>
       </div>
     </div>
   `;
@@ -142,43 +246,50 @@ function showAutofillNotification(credentials) {
   document.body.appendChild(notificationDiv);
   
   // Add event listeners to buttons
-  document.getElementById('sk-autofill-yes').addEventListener('click', () => {
+  document.getElementById('sv-autofill-yes').addEventListener('click', () => {
     fillCredentials(credentials);
     notificationDiv.remove();
   });
   
-  document.getElementById('sk-autofill-no').addEventListener('click', () => {
+  document.getElementById('sv-autofill-no').addEventListener('click', () => {
     notificationDiv.remove();
   });
   
-  // Auto-remove after 10 seconds
+  // Auto-remove after 15 seconds
   setTimeout(() => {
     if (document.body.contains(notificationDiv)) {
       notificationDiv.remove();
     }
-  }, 10000);
+  }, 15000);
 }
 
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'fillCredentials') {
-    const result = fillCredentials(message.credentials);
-    sendResponse({ success: result });
-  }
-  
-  if (message.action === 'checkForLoginForm') {
-    const loginForms = findLoginForms();
-    if (loginForms.length > 0) {
-      // Notify background script that we found a login form
-      chrome.runtime.sendMessage({
-        action: 'loginFormFound',
-        url: window.location.origin
-      });
+  try {
+    if (message.action === 'fillCredentials') {
+      const result = fillCredentials(message.credentials);
+      sendResponse({ success: result });
     }
-  }
-  
-  if (message.action === 'showAutofillNotification') {
-    showAutofillNotification(message.credentials);
+    
+    if (message.action === 'checkForLoginForm') {
+      const loginForms = findLoginForms();
+      if (loginForms.length > 0) {
+        // Notify background script that we found a login form
+        chrome.runtime.sendMessage({
+          action: 'loginFormFound',
+          url: window.location.origin
+        });
+      }
+      sendResponse({ found: loginForms.length > 0 });
+    }
+    
+    if (message.action === 'showAutofillNotification') {
+      showAutofillNotification(message.credentials);
+      sendResponse({ success: true });
+    }
+  } catch (error) {
+    console.error('SecureVault content script error:', error);
+    sendResponse({ success: false, error: error.message });
   }
   
   return true;
@@ -187,15 +298,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Initialize
 (function() {
   console.log('SecureVault content script loaded');
+  
+  // Setup password detection
   setupPasswordChangeDetection();
   
-  // Check for login forms on page load
-  const loginForms = findLoginForms();
-  if (loginForms.length > 0) {
-    // Notify background script that we found a login form
-    chrome.runtime.sendMessage({
-      action: 'loginFormFound',
-      url: window.location.origin
-    });
+  // Check for login forms when DOM is ready
+  function checkForForms() {
+    const loginForms = findLoginForms();
+    if (loginForms.length > 0) {
+      chrome.runtime.sendMessage({
+        action: 'loginFormFound',
+        url: window.location.origin
+      });
+    }
   }
+  
+  // Check immediately if DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkForForms);
+  } else {
+    checkForForms();
+  }
+  
+  // Also check when new content is dynamically added
+  const observer = new MutationObserver((mutations) => {
+    let shouldCheck = false;
+    mutations.forEach(mutation => {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.querySelector && (node.querySelector('form') || node.querySelector('input[type="password"]'))) {
+              shouldCheck = true;
+              break;
+            }
+          }
+        }
+      }
+    });
+    
+    if (shouldCheck) {
+      setTimeout(checkForForms, 500); // Delay to allow form setup
+    }
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 })();

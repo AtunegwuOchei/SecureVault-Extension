@@ -1,4 +1,7 @@
+
 // SecureVault Extension Background Script
+
+const API_BASE_URL = 'https://411d76d3-1f86-4d42-9b6f-9db0e512fdcf-00-26t1rmmq2zd9x.spock.replit.dev/api';
 
 // Listen for installation or update events
 chrome.runtime.onInstalled.addListener((details) => {
@@ -15,12 +18,35 @@ chrome.runtime.onInstalled.addListener((details) => {
         passwordSuggestions: true,
         defaultPasswordLength: '12'
       },
-      'lastSync': new Date().toISOString()
+      'lastSync': new Date().toISOString(),
+      'apiBaseUrl': API_BASE_URL
     });
   } else if (details.reason === 'update') {
     console.log('SecureVault Extension updated');
   }
 });
+
+// API helper functions
+async function makeAPIRequest(endpoint, options = {}) {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API request error:', error);
+    throw error;
+  }
+}
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -42,14 +68,74 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       action: 'fillCredentials',
       credentials: message.credentials
     });
+    sendResponse({ success: true });
   }
   
   if (message.action === 'savePassword') {
-    // Store the password securely and sync with native app
+    // Store the password securely via API
     console.log('Saving password for:', message.data.website);
-    // In a real implementation, this would securely store the data
-    // and communicate with the native app
-    sendResponse({ success: true });
+    
+    makeAPIRequest('/passwords', {
+      method: 'POST',
+      body: JSON.stringify({
+        website: message.data.website,
+        username: message.data.username,
+        password: message.data.password
+      })
+    }).then(result => {
+      sendResponse({ success: true, data: result });
+    }).catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    
+    return true;
+  }
+  
+  if (message.action === 'getPasswordsForSite') {
+    const hostname = new URL(message.url).hostname;
+    
+    makeAPIRequest(`/passwords/site/${encodeURIComponent(hostname)}`)
+      .then(result => {
+        sendResponse({ success: true, data: result });
+      }).catch(error => {
+        sendResponse({ success: false, error: error.message });
+      });
+    
+    return true;
+  }
+  
+  if (message.action === 'getRecentPasswords') {
+    makeAPIRequest('/passwords/recent')
+      .then(result => {
+        sendResponse({ success: true, data: result });
+      }).catch(error => {
+        sendResponse({ success: false, error: error.message });
+      });
+    
+    return true;
+  }
+  
+  if (message.action === 'getSettings') {
+    makeAPIRequest('/settings')
+      .then(result => {
+        sendResponse({ success: true, data: result });
+      }).catch(error => {
+        sendResponse({ success: false, error: error.message });
+      });
+    
+    return true;
+  }
+  
+  if (message.action === 'updateSettings') {
+    makeAPIRequest('/settings', {
+      method: 'POST',
+      body: JSON.stringify(message.settings)
+    }).then(result => {
+      sendResponse({ success: true, data: result });
+    }).catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    
     return true;
   }
 });
@@ -72,8 +158,29 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+// Handle login form detection from content script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'loginFormFound') {
+    // Check if we have credentials for this site
+    const hostname = new URL(message.url).hostname;
+    
+    makeAPIRequest(`/passwords/site/${encodeURIComponent(hostname)}`)
+      .then(result => {
+        if (result) {
+          // Send autofill notification to content script
+          chrome.tabs.sendMessage(sender.tab.id, {
+            action: 'showAutofillNotification',
+            credentials: result
+          });
+        }
+      }).catch(error => {
+        console.error('Failed to get credentials for site:', error);
+      });
+  }
+});
+
 // Set up alarm for auto-lock timeout
-chrome.alarms.create('autoLock', { periodInMinutes: 5 });
+chrome.alarms.create('autoLock', { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'autoLock') {
