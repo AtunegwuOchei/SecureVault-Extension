@@ -1,4 +1,4 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
+/*import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import ws from "ws";
 import * as schema from "@shared/schema";
@@ -23,4 +23,4 @@ export const db = globalForDrizzle.db ?? drizzle({ client: pool, schema });
 if (process.env.NODE_ENV !== "production") {
   globalForDrizzle.pool = pool;
   globalForDrizzle.db = db;
-}
+} */

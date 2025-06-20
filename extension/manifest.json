@@ -1,4 +1,3 @@
-
 {
   "manifest_version": 3,
   "name": "SecureVault - Password Manager",
@@ -26,8 +25,7 @@
     "alarms"
   ],
   "host_permissions": [
-    "http://*/*",
-    "https://*/*"
+    "https://411d76d3-1f86-4d42-9b6f-9db0e512fdcf-00-26t1rmmq2zd9x.spock.replit.dev/*"
   ],
   "background": {
     "service_worker": "background.js",

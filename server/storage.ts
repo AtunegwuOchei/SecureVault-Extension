@@ -1,5 +1,5 @@
 
-import { db } from './db';
+/* import { db } from './db';
 import { passwords, settings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
@@ -163,3 +163,4 @@ export const storage = {
     }
   },
 };
+*/
