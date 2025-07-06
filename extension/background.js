@@ -42,7 +42,7 @@ chrome.runtime.onInstalled.addListener((details) => {
         passwordSuggestions: true,
         defaultPasswordLength: '12'
       },
-      lastSync: new Date().toISOString(),
+      lastSync: new Date().toISOString(), // Initialize lastSync on install
       apiBaseUrl: API_BASE_URL
     });
   } else if (details.reason === 'update') {
@@ -54,8 +54,17 @@ async function makeAPIRequest(endpoint, options = {}) {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: { 'Content-Type': 'application/json', ...options.headers },
-      ...options
+      ...options,
+      credentials: 'include' // Ensure cookies are sent
     });
+    // Handle 401 Unauthorized for all API requests
+    if (response.status === 401) {
+      console.warn('Authentication expired or unauthorized. Logging out...');
+      chrome.storage.local.set({ isLoggedIn: false, userId: null, lastSync: null });
+      // Optionally, notify popup or content scripts to update UI
+      chrome.runtime.sendMessage({ action: 'loggedOut' });
+      throw new Error('Unauthorized');
+    }
     if (!response.ok) throw new Error(`API request failed: ${response.status}`);
     return await response.json();
   } catch (error) {
@@ -114,6 +123,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }).then(result => sendResponse({ success: true, data: result }))
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
+
+    case 'syncData': // New message action to trigger manual sync from popup/options
+      syncData();
+      sendResponse({ success: true });
+      return true;
   }
 });
 
@@ -146,6 +160,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
 });
 
 chrome.alarms.create('autoLock', { periodInMinutes: 1 });
+chrome.alarms.create('dataSync', { periodInMinutes: 15 }); // Create an alarm for data synchronization every 15 minutes
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'autoLock') {
@@ -157,5 +172,64 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         chrome.storage.local.set({ isLocked: true });
       }
     });
+  } else if (alarm.name === 'dataSync') {
+    syncData(); // Trigger data synchronization
   }
 });
+
+async function syncData() {
+  chrome.storage.local.get(['lastSync'], async (result) => {
+    const lastSyncTimestamp = result.lastSync || new Date(0).toISOString(); // Use epoch if no lastSync found
+    console.log(`[Sync] Initiating data sync since: ${lastSyncTimestamp}`);
+    try {
+      const syncResponse = await makeAPIRequest('/extension/sync-data', {
+        method: 'POST',
+        body: JSON.stringify({ lastSyncTimestamp })
+      });
+
+      console.log('[Sync] Sync response:', syncResponse);
+
+      const { updatedPasswords, updatedUserSettings, serverTime } = syncResponse;
+
+      // Update passwords in local storage
+      chrome.storage.local.get(['passwords'], (storageResult) => {
+        const currentPasswords = storageResult.passwords || [];
+        const newPasswordsMap = new Map(currentPasswords.map(p => [p.id, p]));
+
+        updatedPasswords.forEach(p => {
+          if (p.isDeleted) { // Assuming a 'isDeleted' flag for deleted items
+            newPasswordsMap.delete(p.id);
+          } else {
+            newPasswordsMap.set(p.id, p);
+          }
+        });
+
+        chrome.storage.local.set({ passwords: Array.from(newPasswordsMap.values()) }, () => {
+          console.log(`[Sync] Updated ${updatedPasswords.length} passwords.`);
+        });
+      });
+
+      // Update user settings in local storage if provided
+      if (updatedUserSettings) {
+        chrome.storage.local.set({ userSettings: updatedUserSettings }, () => {
+          console.log('[Sync] Updated user settings.');
+        });
+      }
+
+      // Store the new server time as the last sync timestamp
+      chrome.storage.local.set({ lastSync: serverTime }, () => {
+        console.log(`[Sync] Data synchronization complete. New lastSync: ${serverTime}`);
+      });
+
+      // Optionally, send a message to other parts of the extension (e.g., popup) to refresh data
+      chrome.runtime.sendMessage({ action: 'dataSynced' });
+
+    } catch (error) {
+      console.error('[Sync] Data synchronization failed:', error);
+      // If error is 401 Unauthorized, makeAPIRequest already handles logout.
+    }
+  });
+}
+
+// Initial sync on startup
+syncData();
