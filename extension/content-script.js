@@ -5,16 +5,21 @@
  * and communicates securely with the extension background script.
  */
 
+console.log('[Content Script] SecureVault Content script loaded.');
+
 // Find login forms on the current page
 function findLoginForms() {
+  console.log('[Content Script] findLoginForms: Scanning for forms...');
   const forms = document.querySelectorAll('form');
   const loginForms = [];
 
   forms.forEach(form => {
     const passwordFields = form.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])');
     if (passwordFields.length > 0) {
+      console.log(`[Content Script] findLoginForms: Found form with password fields. Form:`, form);
       let usernameField = null;
-      const inputFields = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input:not([type])');
+      // Also include 'search' type for username fields, common for search bars that might be misused
+      const inputFields = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="search"], input:not([type])');
 
       for (const field of inputFields) {
         if (field.disabled || field.readOnly) continue;
@@ -37,11 +42,13 @@ function findLoginForms() {
 
         if (hasMatch) {
           usernameField = field;
+          console.log(`[Content Script] findLoginForms: Found potential username field:`, usernameField);
           break;
         }
       }
 
       if (!usernameField) {
+        // Fallback: look for a text input before the password field
         const allInputs = Array.from(inputFields);
         const passwordIndex = Array.from(form.querySelectorAll('*')).indexOf(passwordFields[0]);
 
@@ -49,6 +56,7 @@ function findLoginForms() {
           const index = Array.from(form.querySelectorAll('*')).indexOf(field);
           if (index < passwordIndex && isVisible(field)) {
             usernameField = field;
+            console.log(`[Content Script] findLoginForms: Fallback: Found username field before password:`, usernameField);
             break;
           }
         }
@@ -56,10 +64,13 @@ function findLoginForms() {
 
       if (usernameField && isVisible(usernameField) && isVisible(passwordFields[0])) {
         loginForms.push({ form, usernameField, passwordField: passwordFields[0] });
+        console.log(`[Content Script] findLoginForms: Valid login form detected:`, { usernameField, passwordField: passwordFields[0] });
+      } else {
+        console.log(`[Content Script] findLoginForms: Form found but not valid for autofill (username or password field not visible/found):`, { usernameField, passwordField: passwordFields[0] });
       }
     }
   });
-
+  console.log(`[Content Script] findLoginForms: Found ${loginForms.length} login forms.`);
   return loginForms;
 }
 
@@ -81,26 +92,34 @@ function isVisible(el) {
 }
 
 function fillCredentials({ username, password }) {
+  console.log(`[Content Script] Attempting to fill credentials for username: ${username}`);
   const loginForms = findLoginForms();
-  if (loginForms.length === 0) return false;
+  if (loginForms.length === 0) {
+    console.warn('[Content Script] fillCredentials: No login forms found to fill.');
+    return false;
+  }
 
   const { usernameField, passwordField } = loginForms[0];
 
   usernameField.focus();
   usernameField.value = username;
+  console.log(`[Content Script] Filled username field:`, usernameField);
   ['input', 'change', 'blur'].forEach(event => usernameField.dispatchEvent(new Event(event, { bubbles: true })));
 
   setTimeout(() => {
     passwordField.focus();
     passwordField.value = password;
+    console.log(`[Content Script] Filled password field:`, passwordField);
     ['input', 'change', 'blur'].forEach(event => passwordField.dispatchEvent(new Event(event, { bubbles: true })));
-    setTimeout(() => usernameField.focus(), 100);
+    setTimeout(() => usernameField.focus(), 100); // Refocus username field after filling
   }, 100);
 
+  console.log('[Content Script] Credentials filling initiated.');
   return true;
 }
 
 function setupPasswordChangeDetection() {
+  console.log('[Content Script] Setting up password change detection...');
   document.addEventListener('submit', (event) => {
     const form = event.target;
     if (!form || form.tagName !== 'FORM') return;
@@ -111,19 +130,31 @@ function setupPasswordChangeDetection() {
     const username = usernameField?.value;
 
     if (password && username) {
+      console.log('[Content Script] Submit event: Password and username found. Attempting to save.');
       const website = window.location.hostname;
-      const data = { website, username, password };
+      const data = { url: website, username, encryptedPassword: password }; // Ensure 'url' and 'encryptedPassword' match schema
 
       setTimeout(() => {
+        // Double check hostname in case of redirects
         if (window.location.hostname === website) {
-          chrome.runtime.sendMessage({ action: 'savePassword', data });
+          console.log('[Content Script] Sending savePassword message to background:', data);
+          chrome.runtime.sendMessage({ action: 'savePassword', data })
+            .then(response => {
+              if (response && response.success) {
+                console.log('[Content Script] Password saved successfully:', response.data);
+              } else {
+                console.error('[Content Script] Failed to save password:', response?.error);
+              }
+            })
+            .catch(err => console.error('[Content Script] Error sending savePassword message:', err));
         }
       }, 1000);
     }
-  }, true);
+  }, true); // Use capture phase to ensure this listener runs before others
 }
 
 function showAutofillNotification({ username, password }) {
+  console.log('[Content Script] Showing autofill notification...');
   const existing = document.querySelector('.securevault-notification');
   if (existing) existing.remove();
 
@@ -159,19 +190,28 @@ function showAutofillNotification({ username, password }) {
     box.remove();
   });
   document.getElementById('sv-autofill-no').addEventListener('click', () => box.remove());
-  setTimeout(() => box.remove(), 15000);
+  setTimeout(() => {
+    console.log('[Content Script] Autofill notification timed out.');
+    box.remove();
+  }, 15000);
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log(`[Content Script] Message received from background: ${message.action}`, message);
   try {
     if (message.action === 'fillCredentials') {
       const success = fillCredentials(message.credentials);
       sendResponse({ success });
     }
     if (message.action === 'checkForLoginForm') {
+      console.log('[Content Script] Received checkForLoginForm. Running findLoginForms...');
       const found = findLoginForms().length > 0;
       if (found) {
-        chrome.runtime.sendMessage({ action: 'loginFormFound', url: window.location.origin });
+        console.log(`[Content Script] Login form found. Sending loginFormFound message for ${window.location.hostname}.`);
+        // Send hostname, not origin, for consistency
+        chrome.runtime.sendMessage({ action: 'loginFormFound', url: window.location.hostname });
+      } else {
+        console.log('[Content Script] No login form found.');
       }
       sendResponse({ found });
     }
@@ -183,28 +223,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.error('[SecureVault] Content script error:', err);
     sendResponse({ success: false, error: err.message });
   }
-  return true;
+  return true; // Indicates that sendResponse will be called asynchronously
 });
 
 (function initialize() {
-  console.log('[SecureVault] Content script loaded');
+  console.log('[Content Script] Initializing...');
   setupPasswordChangeDetection();
 
   const check = () => {
-    if (findLoginForms().length > 0) {
-      chrome.runtime.sendMessage({ action: 'loginFormFound', url: window.location.origin });
+    console.log('[Content Script] Initial check for login forms...');
+    const loginForms = findLoginForms();
+    if (loginForms.length > 0) {
+      console.log(`[Content Script] Login form(s) found on initial check. Sending loginFormFound message for ${window.location.hostname}.`);
+      // Send hostname, not origin, for consistency
+      chrome.runtime.sendMessage({ action: 'loginFormFound', url: window.location.hostname });
+    } else {
+      console.log('[Content Script] No login forms found on initial check.');
     }
   };
 
+  // Use a slight delay to ensure DOM is fully ready and stable
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', check);
+    document.addEventListener('DOMContentLoaded', () => setTimeout(check, 500));
   } else {
-    check();
+    setTimeout(check, 500);
   }
 
+  // Observe DOM changes for dynamically loaded forms
   new MutationObserver((mutations) => {
-    if (mutations.some(m => [...m.addedNodes].some(node => node.nodeType === Node.ELEMENT_NODE && (node.querySelector?.('form') || node.querySelector?.('input[type="password"]'))))) {
-      setTimeout(check, 500);
+    let formsAdded = false;
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.querySelector('form') || node.querySelector('input[type="password"]')) {
+              formsAdded = true;
+              break;
+            }
+          }
+        }
+      }
+      if (formsAdded) break;
+    }
+    if (formsAdded) {
+      console.log('[Content Script] DOM Mutation detected: New forms/password fields added. Re-checking...');
+      setTimeout(check, 500); // Re-check after a short delay
     }
   }).observe(document.body, { childList: true, subtree: true });
 })();

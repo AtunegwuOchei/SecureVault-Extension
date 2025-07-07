@@ -25,7 +25,9 @@
     "alarms"
   ],
   "host_permissions": [
-    "https://411d76d3-1f86-4d42-9b6f-9db0e512fdcf-00-26t1rmmq2zd9x.spock.replit.dev/*"
+    "https://411d76d3-1f86-4d42-9b6f-9db0e512fdcf-00-26t1rmmq2zd9x.spock.replit.dev/*",
+    "http://*/*",  
+    "https://*/*"  
   ],
   "background": {
     "service_worker": "background.js",
@@ -35,7 +37,7 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content-script.js"],
-      "run_at": "document_end"
+      "run_at": "document_idle" 
     }
   ],
   "web_accessible_resources": [
